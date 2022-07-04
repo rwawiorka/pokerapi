@@ -3,11 +3,11 @@ const { calculateWinner } = require('../services/winner/calculateWinner');
 const pokerCards = require('../misc/cards');
 
 const NoProperTableGivenException = require('../services/exceptions/winner/NoProperTableGivenException');
-const NotEnoughPlayersException = require('../services/exceptions/winner/NotEnoughPlayersException');
-const NotEnoughCardsException = require('../services/exceptions/winner/NotEnoughCardsException');
-const NoCardsRepeatException = require('../services/exceptions/winner/NoCardsRepeatException');
-const NoProperCardsGivenException = require('../services/exceptions/winner/NoProperCardsGivenException');
-const TooManyPlayersException = require('../services/exceptions/winner/TooManyPlayersException');
+const NotEnoughPlayersException = require('../services/exceptions/common/NotEnoughPlayersException');
+const NotEnoughCardsException = require('../services/exceptions/common/NotEnoughCardsException');
+const NoCardsRepeatException = require('../services/exceptions/common/NoCardsRepeatException');
+const NoProperCardsGivenException = require('../services/exceptions/common/NoProperCardsGivenException');
+const TooManyPlayersException = require('../services/exceptions/common/TooManyPlayersException');
 
 exports.getWinner = (req, res) => {
     try {

@@ -2,14 +2,6 @@ const Card = require('../../misc/Card');
 const Player = require('../../misc/Player');
 const hands = require('../../misc/hands');
 
-exports.calculateWinner = (req, res) => {
-    try {
-        calcWinner(req.query, res);
-    } catch (error) {
-        res.send(error.message);
-    }
-}
-
 function calcWinner(req, res) {
     const playersReq = req.pl
     const tableReq = req.t;
@@ -18,6 +10,7 @@ function calcWinner(req, res) {
     const playersRanks = [];
     const playersObject = [];
 
+    const playersToRoyalFlush = [];
     const playersToStraightFlush = [];
     const playersToFourOfAKind = [];
     const playersToFullHouse = [];
@@ -33,6 +26,7 @@ function calcWinner(req, res) {
         if ((players[i] = royalFlush(playersReq[i], tableReq)) != false) {
             playersRanks[i] = 'royalFlush';
             playersObject.push(players[i].player);
+            playersToRoyalFlush.push(players[i]);
         } else if ((players[i] = straightFlush(playersReq[i], tableReq)) != false) {
             playersRanks[i] = 'straightFlush';
             playersObject.push(players[i].player);
@@ -70,7 +64,19 @@ function calcWinner(req, res) {
             playersObject.push(players[i].player);
         }
     }
-    if (playersToThreeOfAKind.length > 1) {
+    if (playersToRoyalFlush.length > 0) {
+        winners = playersToRoyalFlush[0].player;
+    } else if (playersToStraightFlush.length > 1) {
+        winners = determineStraightFlushDraw(playersToStraightFlush);
+    } else if (playersToFourOfAKind.length > 1) {
+        winners = determineFourOfAKindDraw(playersToFourOfAKind);
+    } else if (playersToFullHouse.length > 1) {
+        winners = determineFullHouseDraw(playersToFullHouse);
+    } else if (playersToFlush.length > 1) {
+        winners = determineFlushDraw(playersToFlush);
+    } else if (playersToStraight.length > 1) {
+        winners = determineStraightDraw(playersToStraight);
+    } else if (playersToThreeOfAKind.length > 1) {
         winners = determineThreeOfAKindDraw(playersToThreeOfAKind);
     } else if (playersToTwoPair.length > 1) {
         winners = determineTwoPairDraw(playersToTwoPair);
@@ -85,57 +91,301 @@ function calcWinner(req, res) {
     res.status(200).send(JSON.stringify({ winners: winners, players: playersObject }));
 }
 
-function royalFlush(playerCards, tableCards) {
+let royalFlush = function(playerCards = false, tableCards) {
+    let playerStraightFlush;
+    let hasRoyalFlush = false;
 
-    return false;
+    if ((playerStraightFlush = straightFlush(playerCards, tableCards)) != false) {
+        if ((playerStraightFlush.playerCards[4].power == 14) &&
+            (playerStraightFlush.playerCards[0].power == 10)) {
+            hasRoyalFlush = true;
+        }
+    }
+    if (hasRoyalFlush == false) {
+        return false;
+    }
+
+    playerStraightFlush.player.result = 'royalFlush';
+
+    return hasRoyalFlush ? { player: playerStraightFlush.player, playerPower: playerStraightFlush.playerPower, playerCards: playerStraightFlush.playerCards, result: royalFlush.name } : false;
 }
 
-function straightFlush(playerCards, tableCards) {
-
-    return false;
-}
-
-function fourOfAKind(playerCards, tableCards) {
-
-    return false;
-}
-
-function fullHouse(playerCards, tableCards) {
-
-    return false;
-}
-
-function flush(playerCards, tableCards) {
-
-    return false;
-}
-
-function straight(playerCards, tableCards) {
+let straightFlush = function(playerCards = false, tableCards) {
 
     const cards = createCards(playerCards, tableCards);
-    let tempPlayerTableCards = cards.playerCards;
+    let hasStraightFlush = false;
+    let playerStraight;
+    let playerFlush;
+
+    if ((playerStraight = straight(playerCards, tableCards))) {
+        if ((playerFlush = flush(playerStraight.player.cards, tableCards))) {
+            hasStraightFlush = true;
+        }
+    }
+
+    if (hasStraightFlush == false) { return false; }
+
+    playerFlush.player.result = 'straightFlush';
+    return hasStraightFlush ? { player: playerFlush.player, playerPower: playerFlush.playerPower, playerCards: playerFlush.playerCards, result: straightFlush.name } : false;
+}
+
+let fourOfAKind = function(playerCards = false, tableCards) {
+    const cards = createCards(playerCards, tableCards);
+    let tempPlayerTableCards;
+    if (playerCards) {
+        tempPlayerTableCards = cards.playerCards;
+    } else {
+        tempPlayerTableCards = cards.tableCards;
+    }
+    let hasFourOfAKind = false;
+    const fourPos = [];
+    let rejectedPlayerCardsIndexes = [];
+    let playerPower = 0;
+
+    for (let i = 0; i < tempPlayerTableCards.length - 3; i++) {
+        if ((tempPlayerTableCards[i].power == tempPlayerTableCards[i + 1].power) &&
+            (tempPlayerTableCards[i + 1].power == tempPlayerTableCards[i + 2].power) &&
+            (tempPlayerTableCards[i + 2].power == tempPlayerTableCards[i + 3].power)) {
+            hasFourOfAKind = true;
+            fourPos.push(i);
+            fourPos.push(i + 1);
+            fourPos.push(i + 2);
+            fourPos.push(i + 3);
+        }
+    }
+
+    if (hasFourOfAKind == false) { return false; }
+
+    if (fourPos.length > 4) {
+        const fourPosLength = fourPos.length;
+        for (let i = 0; i < fourPosLength - 4; i++) {
+            fourPos.shift();
+        }
+    }
+
+    for (let i = 0; i < tempPlayerTableCards.length; i++) {
+        if (fourPos.includes(i)) {
+            continue;
+        }
+        if (rejectedPlayerCardsIndexes.length >= 2) {
+            break;
+        }
+        rejectedPlayerCardsIndexes.push(i);
+    }
+
+    tempPlayerTableCards = tempPlayerTableCards.filter(function(value, index) {
+        return rejectedPlayerCardsIndexes.indexOf(index) == -1;
+    });
+
+    const player = new Player(playerCards, backCardsToString(tempPlayerTableCards), fourOfAKind.name);
+
+    return hasFourOfAKind ? { player: player, playerPower: playerPower, playerCards: tempPlayerTableCards, result: fourOfAKind.name } : false;
+}
+
+let fullHouse = function(playerCards = false, tableCards) {
+    const cards = createCards(playerCards, tableCards);
+    let tempPlayerTableCards;
+    if (playerCards) {
+        tempPlayerTableCards = cards.playerCards;
+    } else {
+        tempPlayerTableCards = cards.tableCards;
+    }
+    let hasFullHouse = false;
+    const threePos = [];
+    const pairPos = [];
+    let threesCardPower;
+    let rejectedPlayerCardsIndexes = [];
+    let playerPower = 0;
+
+    for (let i = 0; i < tempPlayerTableCards.length - 2; i++) {
+        if ((tempPlayerTableCards[i].power == tempPlayerTableCards[i + 1].power) && (tempPlayerTableCards[i + 1].power == tempPlayerTableCards[i + 2].power)) {
+            threePos.push(i);
+            threePos.push(i + 1);
+            threePos.push(i + 2);
+            threesCardPower = tempPlayerTableCards[i].power;
+            for (let j = 0; j < tempPlayerTableCards.length - 1; j++) {
+                if ((tempPlayerTableCards[j].power == tempPlayerTableCards[j + 1].power) && (tempPlayerTableCards[j].power != threesCardPower)) {
+                    pairPos.push(j);
+                    pairPos.push(j + 1);
+                    hasFullHouse = true;
+                }
+            }
+        }
+    }
+
+    if (hasFullHouse == false) { return false; }
+
+    if (threePos.length > 3) {
+        const threePosLength = threePos.length;
+        for (let i = 0; i < threePosLength - 3; i++) {
+            threePos.shift();
+        }
+    }
+
+    if (pairPos.length > 2) {
+        const pairPosLength = pairPos.length;
+        for (let i = 0; i < pairPosLength - 2; i++) {
+            pairPos.shift();
+        }
+    }
+
+    for (let i = 0; i < tempPlayerTableCards.length; i++) {
+        if (threePos.includes(i) || pairPos.includes(i)) {
+            continue;
+        }
+        if (rejectedPlayerCardsIndexes.length >= 2) {
+            break;
+        }
+        rejectedPlayerCardsIndexes.push(i);
+    }
+    tempPlayerTableCards = tempPlayerTableCards.filter(function(value, index) {
+        return rejectedPlayerCardsIndexes.indexOf(index) == -1;
+    });
+
+    const player = new Player(playerCards, backCardsToString(tempPlayerTableCards), fullHouse.name);
+
+    return hasFullHouse ? { player: player, playerPower: playerPower, playerCards: tempPlayerTableCards, result: fullHouse.name } : false;
+}
+
+let flush = function(playerCards = false, tableCards) {
+    const cards = createCards(playerCards, tableCards);
+    let tempPlayerTableCards;
+    if (playerCards) {
+        tempPlayerTableCards = cards.playerCards;
+    } else {
+        tempPlayerTableCards = cards.tableCards;
+    }
+    let hasFlush = false;
+    const diamondsPos = [];
+    const spadesPos = [];
+    const heartsPos = [];
+    const clubsPos = [];
+    let rejectedPlayerCardsIndexes = [];
+    let playerPower = 0;
+    let flushColor;
+
+    for (let i = 0; i < tempPlayerTableCards.length; i++) {
+        const card = tempPlayerTableCards[i];
+        switch (card.suit) {
+            case 'Diamonds':
+                diamondsPos.push(i);
+                break;
+            case 'Spades':
+                spadesPos.push(i);
+                break;
+            case 'Hearts':
+                heartsPos.push(i);
+                break;
+            case 'Clubs':
+                clubsPos.push(i);
+                break;
+        }
+    }
+
+    if (diamondsPos.length >= 5) {
+        hasFlush = true;
+        flushColor = 'diamonds';
+    } else if (spadesPos.length >= 5) {
+        hasFlush = true;
+        flushColor = 'spades';
+    } else if (heartsPos.length >= 5) {
+        hasFlush = true;
+        flushColor = 'hearts';
+    } else if (clubsPos.length >= 5) {
+        hasFlush = true;
+        flushColor = 'clubs';
+    } else {
+        return hasFlush = false;
+    }
+
+    function rejectUnnecessaryCards(pos) {
+        for (let i = 0; i < tempPlayerTableCards.length; i++) {
+            if (pos.includes(i)) {
+                continue;
+            }
+            if (rejectedPlayerCardsIndexes.length >= 2) {
+                break;
+            }
+            rejectedPlayerCardsIndexes.push(i);
+        }
+    }
+
+    switch (flushColor) {
+        case 'diamonds':
+            rejectUnnecessaryCards(diamondsPos);
+            break;
+        case 'spades':
+            rejectUnnecessaryCards(spadesPos);
+            break;
+        case 'hearts':
+            rejectUnnecessaryCards(heartsPos);
+            break;
+        case 'clubs':
+            rejectUnnecessaryCards(clubsPos);
+            break;
+    }
+
+    tempPlayerTableCards = tempPlayerTableCards.filter(function(value, index) {
+        return rejectedPlayerCardsIndexes.indexOf(index) == -1;
+    });
+
+    if (tempPlayerTableCards.length > 5) {
+        const tempPlayerTableCardsLength = tempPlayerTableCards.length;
+        for (let i = 0; i < tempPlayerTableCardsLength - 5; i++) {
+            tempPlayerTableCards.shift();
+        }
+    }
+
+    tempPlayerTableCards.forEach(x => playerPower += x.power);
+
+    const player = new Player(playerCards, backCardsToString(tempPlayerTableCards), flush.name);
+
+    return hasFlush ? { player: player, playerPower: playerPower, playerCards: tempPlayerTableCards, result: flush.name } : false;
+}
+
+let straight = function(playerCards = false, tableCards) {
+
+    const cards = createCards(playerCards, tableCards);
+    let tempPlayerTableCards;
+    if (playerCards) {
+        tempPlayerTableCards = cards.playerCards;
+    } else {
+        tempPlayerTableCards = cards.tableCards;
+    }
     const straightPos = [];
     let hasStraight = false;
     let rejectedPlayerCardsIndexes = [];
-
-    function getUniqueListBy(arr, key) {
-        return [...new Map(arr.map(item => [item[key], item])).values()]
-    }
+    let playerPower = 0;
 
     tempPlayerTableCards = getUniqueListBy(tempPlayerTableCards, 'power');
 
+    if (tempPlayerTableCards.length < 5) { return false; }
 
-    for (let i = 0; i < tempPlayerTableCards.length - 4; i++) {
-        if (((tempPlayerTableCards[i].power + 1) == tempPlayerTableCards[i + 1].power) &&
-            ((tempPlayerTableCards[i + 1].power + 1) == tempPlayerTableCards[i + 2].power) &&
-            ((tempPlayerTableCards[i + 2].power + 1) == tempPlayerTableCards[i + 3].power) &&
-            ((tempPlayerTableCards[i + 3].power + 1) == tempPlayerTableCards[i + 4].power)) {
-            hasStraight = true;
-            straightPos.push(i);
-            straightPos.push(i + 1);
-            straightPos.push(i + 2);
-            straightPos.push(i + 3);
-            straightPos.push(i + 4);
+    if (tempPlayerTableCards[0].power == 2 &&
+        tempPlayerTableCards[1].power == 3 &&
+        tempPlayerTableCards[2].power == 4 &&
+        tempPlayerTableCards[3].power == 5 &&
+        tempPlayerTableCards[tempPlayerTableCards.length - 1].power == 14) {
+        hasStraight = true;
+        straightPos.push(0);
+        straightPos.push(1);
+        straightPos.push(2);
+        straightPos.push(3);
+        straightPos.push(tempPlayerTableCards.length - 1);
+        tempPlayerTableCards[tempPlayerTableCards.length - 1].power = 1;
+    } else {
+        for (let i = 0; i < tempPlayerTableCards.length - 4; i++) {
+            if (((tempPlayerTableCards[i].power + 1) == tempPlayerTableCards[i + 1].power) &&
+                ((tempPlayerTableCards[i + 1].power + 1) == tempPlayerTableCards[i + 2].power) &&
+                ((tempPlayerTableCards[i + 2].power + 1) == tempPlayerTableCards[i + 3].power) &&
+                ((tempPlayerTableCards[i + 3].power + 1) == tempPlayerTableCards[i + 4].power)) {
+                hasStraight = true;
+                straightPos.push(i);
+                straightPos.push(i + 1);
+                straightPos.push(i + 2);
+                straightPos.push(i + 3);
+                straightPos.push(i + 4);
+            }
         }
     }
 
@@ -143,8 +393,11 @@ function straight(playerCards, tableCards) {
         for (let i = 0; i < 5; i++) {
             straightPos.shift();
         }
+        hasStraight = true;
     } else if (straightPos.length < 5) {
         return false;
+    } else {
+        hasStraight = true;
     }
 
     for (let i = 0; i < tempPlayerTableCards.length; i++) {
@@ -160,24 +413,22 @@ function straight(playerCards, tableCards) {
         return rejectedPlayerCardsIndexes.indexOf(index) == -1;
     });
 
-    console.log(tempPlayerTableCards);
+    tempPlayerTableCards.forEach(x => playerPower += x.power);
 
-    // if (tempPlayerTableCards.length > 5) {
-    //     const iterationsToShift = tempPlayerTableCards.length - 5;
-    //     for (let i = 0; i < iterationsToShift; i++) {
-    //         tempPlayerTableCards.shift();
-    //     }
-    // } else {
-    //     return false;
-    // }
-    // console.log(tempPlayerTableCards);
-    return false;
+    const player = new Player(playerCards, backCardsToString(tempPlayerTableCards), straight.name);
+
+    return hasStraight ? { player: player, playerPower: playerPower, playerCards: tempPlayerTableCards, result: straight.name } : false;
+
 }
 
-function threeOfAKind(playerCards, tableCards) {
-
+let threeOfAKind = function(playerCards = false, tableCards) {
     const cards = createCards(playerCards, tableCards);
-    let tempPlayerTableCards = cards.playerCards;
+    let tempPlayerTableCards;
+    if (playerCards) {
+        tempPlayerTableCards = cards.playerCards;
+    } else {
+        tempPlayerTableCards = cards.tableCards;
+    }
     const threePos = [];
     let hasThreeOfAKind = false;
     let rejectedPlayerCardsIndexes = [];
@@ -190,11 +441,17 @@ function threeOfAKind(playerCards, tableCards) {
             threePos.push(i + 2);
         }
     }
-
-    if (threePos.length != 3)
-        return false;
-    else
+    if (threePos.length > 3) {
+        threePos.shift();
+        threePos.shift();
+        threePos.shift();
         hasThreeOfAKind = true;
+    } else if (threePos.length < 3) {
+        return false;
+    } else {
+        hasThreeOfAKind = true;
+    }
+
     for (let i = 0; i < tempPlayerTableCards.length; i++) {
         if (threePos.includes(i))
             continue;
@@ -215,10 +472,15 @@ function threeOfAKind(playerCards, tableCards) {
     return hasThreeOfAKind ? { player: player, playerPower: playerPower, playerCards: tempPlayerTableCards, result: threeOfAKind.name } : false;
 }
 
-function twoPair(playerCards, tableCards) {
+let twoPair = function(playerCards = false, tableCards) {
 
     const cards = createCards(playerCards, tableCards);
-    let tempPlayerTableCards = cards.playerCards;
+    let tempPlayerTableCards;
+    if (playerCards) {
+        tempPlayerTableCards = cards.playerCards;
+    } else {
+        tempPlayerTableCards = cards.tableCards;
+    }
     const pairPos = [];
     let hasTwoPair = false;
     let rejectedPlayerCardsIndexes = [];
@@ -256,9 +518,14 @@ function twoPair(playerCards, tableCards) {
     return hasTwoPair ? { player: player, playerPower: playerPower, playerCards: tempPlayerTableCards, result: twoPair.name } : false;
 }
 
-function pair(playerCards, tableCards) {
+let pair = function(playerCards = false, tableCards) {
     const cards = createCards(playerCards, tableCards);
-    let tempPlayerTableCards = cards.playerCards;
+    let tempPlayerTableCards;
+    if (playerCards) {
+        tempPlayerTableCards = cards.playerCards;
+    } else {
+        tempPlayerTableCards = cards.tableCards;
+    }
     let hasPair = false;
     const pairPos = [];
     let rejectedPlayerCardsIndexes = [];
@@ -286,13 +553,12 @@ function pair(playerCards, tableCards) {
     });
 
     tempPlayerTableCards.forEach(x => playerPower += x.power);
-
     const player = new Player(playerCards, backCardsToString(tempPlayerTableCards), pair.name);
 
     return hasPair ? { player: player, playerPower: playerPower, playerCards: tempPlayerTableCards, result: pair.name } : false;
 }
 
-function highCard(playerCards, tableCards) {
+let highCard = function(playerCards = false, tableCards) {
     const cardsCreated = createCards(playerCards, tableCards);
     const tempPlayerTableCards = cardsCreated.playerCards;
     let playerPower = 0;
@@ -311,6 +577,139 @@ function highCard(playerCards, tableCards) {
     };
 }
 
+function determineStraightFlushDraw(players) {
+    return determineStraightDraw(players);
+}
+
+function determineFourOfAKindDraw(players) {
+    const mostRepeatedPlayersCardsPower = [];
+    const mostRepeatedPlayersCards = [];
+    const winners = [];
+    let maxRepeatedPower = 0;
+
+    for (let i = 0; i < players.length; i++) {
+        mostRepeatedPlayersCardsPower[i] = [];
+        for (let j = 0; j < players[i].playerCards.length; j++) {
+            mostRepeatedPlayersCardsPower[i].push(players[i].playerCards[j].power);
+        }
+    }
+    for (let i = 0; i < players.length; i++) {
+        mostRepeatedPlayersCards.push(mode(mostRepeatedPlayersCardsPower[i], 'most'));
+    }
+
+    maxRepeatedPower = Math.max(...mostRepeatedPlayersCards);
+    let indexes = [],
+        i = -1;
+    while ((i = mostRepeatedPlayersCards.indexOf(maxRepeatedPower, i + 1)) != -1) {
+        indexes.push(i);
+    }
+    if (indexes.length == 1) {
+        winners.push(players[indexes[0]].player);
+    } else {
+        for (let i = 0; i < players.length; i++) {
+            winners.push(players[i].player);
+        }
+    }
+
+    return winners;
+}
+
+function determineFullHouseDraw(players) {
+    const mostRepeatedPlayersCards = [];
+    const leastRepeatedPlayersCards = [];
+    const winners = [];
+
+    for (let i = 0; i < players.length; i++) {
+        mostRepeatedPlayersCards.push(mode(players[i].playerCards, 'most').power);
+        leastRepeatedPlayersCards.push(mode(players[i].playerCards, 'least').power);
+    }
+
+    const maxMostRepeatedPower = Math.max(...mostRepeatedPlayersCards);
+    const maxLeastRepeatedPower = Math.max(...leastRepeatedPlayersCards);
+
+    let indexes = [],
+        i = -1;
+    while ((i = mostRepeatedPlayersCards.indexOf(maxMostRepeatedPower, i + 1)) != -1) {
+        indexes.push(i);
+    }
+
+    if (indexes.length == 1) {
+        winners.push(players[indexes[0]].player);
+    } else {
+        let indexes = [],
+            i = -1;
+        while ((i = leastRepeatedPlayersCards.indexOf(maxLeastRepeatedPower, i + 1)) != -1) {
+            indexes.push(i);
+        }
+        if (indexes.length == 1) {
+            winners.push(players[indexes[0]].player);
+        } else {
+            for (let i = 0; i < players.length; i++) {
+                winners.push(players[i].player);
+            }
+        }
+    }
+
+    return winners;
+}
+
+function determineFlushDraw(players) {
+    const playersPower = [];
+    const winners = [];
+    let maxPower = players[0].playerPower;
+
+    for (let i = 0; i < players.length; i++) {
+        playersPower.push(players[i].playerPower);
+        if (players[i].playerPower > maxPower) {
+            maxPower = players[i].playerPower;
+        }
+    }
+    let indexes = [],
+        i = -1;
+    while ((i = playersPower.indexOf(maxPower, i + 1)) != -1) {
+        indexes.push(i);
+    }
+
+    if (indexes.length == 1) {
+        winners.push(players[indexes[0]].player);
+    } else {
+        for (let i = 0; i < players.length; i++) {
+            winners.push(players[indexes[i]].player);
+        }
+    }
+
+    return winners;
+}
+
+function determineStraightDraw(players) {
+    const playersPower = [];
+    const winners = [];
+    let maxPower = players[0].playerPower;
+
+    for (let i = 0; i < players.length; i++) {
+        playersPower.push(players[i].playerPower);
+        if (players[i].playerPower > maxPower) {
+            maxPower = players[i].playerPower;
+        }
+    }
+
+    let indexes = [],
+        i = -1;
+    while ((i = playersPower.indexOf(maxPower, i + 1)) != -1) {
+        indexes.push(i);
+    }
+
+    if (indexes.length == 1) {
+        winners.push(players[indexes[0]].player);
+    } else {
+        for (let i = 0; i < indexes.length; i++) {
+            winners.push(players[indexes[i]].player);
+        }
+    }
+
+    return winners;
+}
+
 function determineThreeOfAKindDraw(players) {
     const playersThrees = [];
     const winners = [];
@@ -325,7 +724,6 @@ function determineThreeOfAKindDraw(players) {
                 (players[i].playerCards[j + 1].power == players[i].playerCards[j + 2].power)) {
                 playersThrees[i].push(players[i].playerCards[j]);
                 playersThrees[i].push(players[i].playerPower);
-
             }
         }
     }
@@ -342,13 +740,13 @@ function determineThreeOfAKindDraw(players) {
         } else if (maxThreePower == playersThrees[i].power) {
             if (maxPlayerPower < players[i].playerPower) {
                 winners.shift();
-                winners.push(players[i].playerPower);
+                winners.push(players[i].player);
             } else if (maxPlayerPower == players[i].playerPower) {
                 winners.push(players[i].player);
             }
         }
     }
-    console.log(winners);
+
     return winners;
 }
 
@@ -364,30 +762,51 @@ function determineTwoPairDraw(players) {
         for (let j = 0; j < players[i].playerCards.length - 1; j++) {
             if (players[i].playerCards[j].power == players[i].playerCards[j + 1].power) {
                 playersPairs[i].push(players[i].playerCards[j]);
-                playersPairs[i].push(players[i].playerPower);
             }
         }
     }
 
-    let maxPlayerPower = players[0].playerPower;
-    let maxPairPower = playersPairs[0].power;
-    winners.push(players[0].player);
-    for (let i = 1; i < playersPairs.length; i++) {
-        if (maxPairPower < playersPairs[i].power) {
-            if (maxPlayerPower < players[i].playerPower) {
-                winners.shift();
+    const playersBestCard = [];
+
+    for (let i = 0; i < playersPairs.length; i++) {
+        playersBestCard.push(Math.max(...playersPairs[i].map(playerCard => playerCard.power)));
+    }
+
+    const maxPlayerPower = Math.max(...playersBestCard);
+
+    let indexes = [],
+        i = -1;
+    while ((i = playersBestCard.indexOf(maxPlayerPower, i + 1)) != -1) {
+        indexes.push(i);
+    }
+
+    if (indexes.length == 1) {
+        winners.push(players[indexes[0]].player)
+        return winners;
+    } else {
+        const playersBestSecondCards = [];
+
+        for (let i = 0; i < playersPairs.length; i++) {
+            playersBestSecondCards.push(Math.min(...playersPairs[i].map(playerCard => playerCard.power)));
+        }
+
+        const maxPlayerSecondPower = Math.max(...playersBestSecondCards);
+
+        let indexes = [],
+            i = -1;
+        while ((i = playersBestSecondCards.indexOf(maxPlayerSecondPower, i + 1)) != -1) {
+            indexes.push(i);
+        }
+        if (indexes.length == 1) {
+            winners.push(players[indexes[0]].player);
+            return winners;
+        } else {
+            for (let i = 0; i < players.length; i++) {
                 winners.push(players[i].player);
             }
-        } else if (maxPairPower == playersPairs[i].power) {
-            if (maxPlayerPower < players[i].playerPower) {
-                winners.shift();
-                winners.push(players[i].player);
-            } else if (maxPlayerPower == players[i].playerPower) {
-                winners.push(players[i].player);
-            }
+            return winners;
         }
     }
-    return winners;
 }
 
 function determinePairDraw(players) {
@@ -451,34 +870,6 @@ function determineHighCardDraw(players) {
     return winners;
 }
 
-// function playersToDetermineTwoPair(playersRanks, players) {
-//     const playersToTwoPairsTemp = [];
-//     for (let i = 0; i < playersRanks.length; i++) {
-//         for (let j = 0; j < playersRanks.length; j++) {
-//             if (i == j || j == i) continue;
-//             if (playersRanks[i] == playersRanks[j] && playersRanks[i] == 'twoPair') {
-//                 playersToTwoPairsTemp.push(players[i]);
-//                 playersToTwoPairsTemp.push(players[j]);
-//             }
-//         }
-//     }
-//     return [...new Set([...playersToTwoPairsTemp])];
-// }
-
-// function playersToDeterminePair(playersRanks, players) {
-//     const playersToPairsTemp = [];
-//     for (let i = 0; i < playersRanks.length; i++) {
-//         for (let j = 0; j < playersRanks.length; j++) {
-//             if (i == j || j == i) continue;
-//             if (playersRanks[i] == playersRanks[j] && playersRanks[i] == 'pair') {
-//                 playersToPairsTemp.push(players[i]);
-//                 playersToPairsTemp.push(players[j]);
-//             }
-//         }
-//     }
-//     return [...new Set([...playersToPairsTemp])];
-// }
-
 function getHighestPlayersRank(players) {
     const playersRanks = [];
     for (let i = 0; i < players.length; i++) {
@@ -493,25 +884,29 @@ function createCards(playerCards, tableCards) {
     const tableCardsSplit = tableCards.split(',');
     const tempTableCards = []
     const tempPlayerCards = [];
+    let tempPlayerCardsSplitted;
     let tempPlayerTableCards = [];
-    const tempPlayerCardsSplitted = playerCards.split(',');
+    if (playerCards) {
+        tempPlayerCardsSplitted = playerCards.split(',');
+    }
+
 
     for (let i = 0; i < tableCardsSplit.length; i++) {
         tempTableCards.push(new Card(tableCardsSplit[i].toUpperCase().charAt(0), tableCardsSplit[i].toUpperCase().charAt(1)));
     }
+    if (playerCards) {
+        tempPlayerCards.push(new Card(tempPlayerCardsSplitted[0].toUpperCase().charAt(0), tempPlayerCardsSplitted[0].toUpperCase().charAt(1)));
+        tempPlayerCards.push(new Card(tempPlayerCardsSplitted[1].toUpperCase().charAt(0), tempPlayerCardsSplitted[1].toUpperCase().charAt(1)));
 
-    tempPlayerCards.push(new Card(tempPlayerCardsSplitted[0].toUpperCase().charAt(0), tempPlayerCardsSplitted[0].toUpperCase().charAt(1)));
-    tempPlayerCards.push(new Card(tempPlayerCardsSplitted[1].toUpperCase().charAt(0), tempPlayerCardsSplitted[1].toUpperCase().charAt(1)));
+        tempPlayerTableCards = tempPlayerCards.concat(tempTableCards);
 
-    tempPlayerTableCards = tempPlayerCards.concat(tempTableCards);
-
-    tempPlayerTableCards.sort((a, b) => {
-        if (a.power > b.power) return 1;
-        if (a.power < b.power) return -1;
-        return 0;
-    });
-
-    return { playerCards: tempPlayerTableCards };
+        tempPlayerTableCards.sort((a, b) => {
+            if (a.power > b.power) return 1;
+            if (a.power < b.power) return -1;
+            return 0;
+        });
+    }
+    return { playerCards: tempPlayerTableCards, tableCards: tempTableCards };
 }
 
 function backCardsToString(tableCards) {
@@ -521,4 +916,44 @@ function backCardsToString(tableCards) {
         if (i < tableCards.length - 1) tableString += ',';
     }
     return tableString;
+}
+
+function mode(arr, calc) {
+    if (calc == 'most') {
+        return arr.sort((a, b) =>
+            arr.filter(v => v === a).length - arr.filter(v => v === b).length
+        ).pop();
+    } else if (calc == 'least') {
+        return arr.sort((a, b) =>
+            arr.filter(v => v === a).length - arr.filter(v => v === b).length
+        ).shift();
+    } else {
+        return arr.sort((a, b) =>
+            arr.filter(v => v === a).length - arr.filter(v => v === b).length
+        );
+    }
+}
+
+function getUniqueListBy(arr, key) {
+    return [...new Map(arr.map(item => [item[key], item])).values()]
+}
+
+module.exports = {
+    calculateWinner: function(req, res) {
+        try {
+            calcWinner(req.query, res);
+        } catch (error) {
+            res.send(error.message, error.stack);
+        }
+    },
+    royalFlush,
+    straightFlush,
+    fourOfAKind,
+    fullHouse,
+    flush,
+    straight,
+    threeOfAKind,
+    twoPair,
+    pair,
+    highCard,
 }

@@ -7,6 +7,8 @@ class Card {
         this.suit = getSuit(suit);
     }
     getCardByPower(power) {
+        if (power == 1)
+            return 'A';
         return ranks.getTypeByRank(power);
     }
 
