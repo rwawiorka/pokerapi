@@ -1,5 +1,7 @@
 const types = require('../../misc/types');
 
+const TooManyPlayersException = require('../exceptions/common/TooManyPlayersException');
+
 exports.prediction = (req, res) => {
     try {
         if (req.query.type === types.preflop) {
@@ -30,21 +32,35 @@ function predictPreflop(req, res) {
     playerRank.push(playerCards[1].split("")[0]);
     playerSuit.push(playerCards[0].split("")[1]);
     playerSuit.push(playerCards[1].split("")[1]);
-    console.log(req.query.players);
-    console.log(typeof(req.query.players));
     if (req.query.players === '2') {
-        playerProbability = require('../../misc/pokerOddsTwoPlayers');
+        playerProbability = require('../../misc/pokerOdds/pokerOddsTwoPlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else if (req.query.players === '3') {
-        playerProbability = require('../../misc/pokerOddsThreePlayers');
+        playerProbability = require('../../misc/pokerOdds/pokerOddsThreePlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
-    } else if (req.query.player === '4') {
-        playerProbability = require('../../misc/pokerOddsFourPlayers');
+    } else if (req.query.players === '4') {
+        playerProbability = require('../../misc/pokerOdds/pokerOddsFourPlayers');
+        winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
+    } else if (req.query.players === '5') {
+        playerProbability = require('../../misc/pokerOdds/pokerOddsFivePlayers');
+        winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
+    } else if (req.query.players === '6') {
+        playerProbability = require('../../misc/pokerOdds/pokerOddsSixPlayers');
+        winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
+    } else if (req.query.players === '7') {
+        playerProbability = require('../../misc/pokerOdds/pokerOddsSevenPlayers');
+        winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
+    } else if (req.query.players === '8') {
+        playerProbability = require('../../misc/pokerOdds/pokerOddsEightPlayers');
+        winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
+    } else if (req.query.players === '9') {
+        playerProbability = require('../../misc/pokerOdds/pokerOddsNinePlayers');
+        winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
+    } else if (req.query.players === '10') {
+        playerProbability = require('../../misc/pokerOdds/pokerOddsTenPlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else {
-        res.status(500).send({
-            message: 'Too many players'
-        });
+        throw new TooManyPlayersException();
     }
     res.status(200).send({
         playerWinningProbability: winningProbability
