@@ -67,6 +67,15 @@ function predictPreflop(req, res) {
 }
 
 function predictAfterflop(req, res) {
+    const playerCards = req.query.pl.split(",");
+    const playerRank = [];
+    const playerSuit = [];
+    let playerProbability;
+    let winningProbability;
+    playerRank.push(playerCards[0].split("")[0]);
+    playerRank.push(playerCards[1].split("")[0]);
+    playerSuit.push(playerCards[0].split("")[1]);
+    playerSuit.push(playerCards[1].split("")[1]);
 
 }
 
@@ -84,4 +93,8 @@ function getPosibility(playerProb, playerRank, playerSuit) {
     } else {
         return playerProb.array[playerRank[0] + playerRank[1]];
     }
+}
+
+function calcAfterFlopProbability(playerCards, tableCards) {
+
 }
