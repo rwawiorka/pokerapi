@@ -13,7 +13,7 @@ exports.getWinner = (req, res) => {
     try {
         if (!req.query.pl || req.query.pl.length < 2) { // query.pl.length < 2 means too few players
             throw new NotEnoughPlayersException();
-        } else if (req.query.pl.length > 5) { // query.pl.length > 5 means too many players
+        } else if (req.query.pl.length > 10) { // query.pl.length > 10 means too many players
             throw new TooManyPlayersException();
         } else if (!req.query.t || req.query.t.length < 14) { // query.pl.length < 14 means too few deck cards
             throw new NoProperTableGivenException();
