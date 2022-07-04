@@ -2,7 +2,7 @@ const { calculateWinner } = require('../services/winner/calculateWinner');
 
 const pokerCards = require('../misc/cards');
 
-const NoProperTableGivenException = require('../services/exceptions/winner/NoProperTableGivenException');
+const NoProperTableGivenException = require('../services/exceptions/common/NoProperTableGivenException');
 const NotEnoughPlayersException = require('../services/exceptions/common/NotEnoughPlayersException');
 const NotEnoughCardsException = require('../services/exceptions/common/NotEnoughCardsException');
 const NoCardsRepeatException = require('../services/exceptions/common/NoCardsRepeatException');

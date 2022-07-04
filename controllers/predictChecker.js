@@ -5,6 +5,7 @@ const NotEnoughPlayersException = require('../services/exceptions/common/NotEnou
 const NoCardsRepeatException = require('../services/exceptions/common/NoCardsRepeatException');
 const TooManyPlayersException = require('../services/exceptions/common/TooManyPlayersException');
 const NoProperCardsGivenException = require('../services/exceptions/common/NoProperCardsGivenException');
+const NoProperTableGivenException = require('../services/exceptions/common/NoProperTableGivenException');
 const CantDefineType = require('../services/exceptions/predict/CantDefineType');
 
 exports.predictChances = (req, res) => {
@@ -21,6 +22,9 @@ exports.predictChances = (req, res) => {
             const cardsSplitted = req.query.pl.split(",");
             if (cardsSplitted[0] === cardsSplitted[1]) {
                 throw new NoCardsRepeatException();
+            }
+            if (req.query.type === 'afterflop' && (req.query.t.length != 8)) {
+                throw new NoProperTableGivenException();
             }
         }
         prediction(req, res);

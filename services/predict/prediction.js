@@ -1,6 +1,7 @@
 const types = require('../../misc/types');
 
 const TooManyPlayersException = require('../exceptions/common/TooManyPlayersException');
+const CantDefineType = require('../exceptions/predict/CantDefineType');
 
 exports.prediction = (req, res) => {
     try {
@@ -13,9 +14,7 @@ exports.prediction = (req, res) => {
         } else if (req.query.type === types.river) {
             predictRiver(req, res);
         } else {
-            res.status(400).send({
-                message: 'Invalid request'
-            });
+            throw new CantDefineType();
         }
     } catch (error) {
         res.status(500).send(error.message, error.stack);
