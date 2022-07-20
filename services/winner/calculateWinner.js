@@ -1,6 +1,7 @@
 const Card = require('../../misc/Card');
 const Player = require('../../misc/Player');
 const hands = require('../../misc/hands');
+const createCards = require('../../misc/createCards');
 
 function calcWinner(req, res) {
     const playersReq = req.pl
@@ -83,9 +84,7 @@ function calcWinner(req, res) {
     } else if (playersToPair.length > 1) {
         winners = determinePairDraw(playersToPair);
     } else {
-        if ((winners = getHighestPlayersRank(players)) == false) {
-            winners = determineHighCardDraw(players);
-        }
+        winners = determineHighCardDraw(players);
     }
 
     res.status(200).send(JSON.stringify({ winners: winners, players: playersObject }));
@@ -822,91 +821,195 @@ function determinePairDraw(players) {
         for (let j = 0; j < players[i].playerCards.length - 1; j++) {
             if (players[i].playerCards[j].power == players[i].playerCards[j + 1].power) {
                 playersPairs[i].push(players[i].playerCards[j]);
-                playersPairs[i].push(players[i].playerPower);
                 break;
             }
         }
     }
 
-    let maxPlayerPower = players[0].playerPower;
-    let maxPairPower = playersPairs[0].power;
-    winners.push(players[0].player);
-    for (let i = 1; i < playersPairs.length; i++) {
-        if (maxPairPower < playersPairs[i].power) {
-            if (maxPlayerPower < players[i].playerPower) {
-                winners.shift();
-                winners.push(players[i].player);
+    const bestPlayersPair = [];
+    for (let i = 0; i < playersPairs.length; i++) {
+        bestPlayersPair.push(Math.max(playersPairs[i].map(playerCard => playerCard.power)));
+    }
+    const maxPairPower = Math.max(...bestPlayersPair);
+    let indexes = [],
+        i = -1;
+    while ((i = bestPlayersPair.indexOf(maxPairPower, i + 1)) != -1) {
+        indexes.push(i);
+    }
+
+    if (indexes.length == 1) {
+        winners.push(players[indexes[0]].player);
+    } else {
+        const playersMaxNoPair = [];
+        let playersTemp = players;
+        for (let i = 0; i < playersTemp.length; i++) {
+            playersTemp[i].playerCards = playersTemp[i].playerCards.filter(function(el) {
+                return el.power != playersPairs[i][0].power;
+            });
+        }
+        for (let i = 0; i < playersTemp.length; i++) {
+            playersMaxNoPair.push(playersTemp[i].playerCards.map(card => card.power));
+            playersMaxNoPair[i].sort(function(a, b) {
+                if (a > b) return -1;
+                else if (a < b) return 1;
+                else return 0;
+            });
+        }
+        const getArrayColumn = (arr, n) => arr.map((x) => x[n]);
+        const noPairMaxFirst = getArrayColumn(playersMaxNoPair, 0);
+        let noPairMax = noPairMaxFirst[0];
+        for (let i = 1; i < noPairMaxFirst.length; i++) {
+            if (noPairMaxFirst[i] > noPairMax) {
+                noPairMax = noPairMaxFirst[i];
             }
-        } else if (maxPairPower == playersPairs[i].power) {
-            if (maxPlayerPower < players[i].playerPower) {
-                winners.shift();
-                winners.push(players[i].player);
-            } else if (maxPlayerPower == players[i].playerPower) {
-                winners.push(players[i].player);
+        }
+        let indexes = [],
+            i = -1;
+        while ((i = noPairMaxFirst.indexOf(noPairMax, i + 1)) != -1) {
+            indexes.push(i);
+        }
+        if (indexes.length == 1) {
+            winners.push(players[indexes[0]].player);
+        } else {
+            const noPairMaxSecond = getArrayColumn(playersMaxNoPair, 1);
+            let noPairSecondMax = noPairMaxSecond[0];
+            for (let i = 1; i < noPairMaxSecond.length; i++) {
+                if (noPairMaxSecond[i] > noPairSecondMax) {
+                    noPairSecondMax = noPairMaxSecond[i];
+                }
+            }
+            let indexes = [],
+                i = -1;
+            while ((i = noPairMaxSecond.indexOf(noPairSecondMax, i + 1)) != -1) {
+                indexes.push(i);
+            }
+
+            if (indexes.length == 1) {
+                winners.push(players[indexes[0]].player);
+            } else {
+                const noPairMaxLast = getArrayColumn(playersMaxNoPair, 2);
+                let noPairLastMax = noPairMaxLast[0];
+                for (let i = 1; i < noPairMaxLast.length; i++) {
+                    if (noPairMaxLast[i] > noPairLastMax) {
+                        noPairLastMax = noPairMaxLast[i];
+                    }
+                }
+                let indexes = [],
+                    i = -1;
+                while ((i = noPairMaxSecond.indexOf(noPairSecondMax, i + 1)) != -1) {
+                    indexes.push(i);
+                }
+                if (indexes.length == 1) {
+                    winners.push(players[indexes[0]].player);
+                } else {
+                    for (let i = 0; i < players.length; i++) {
+                        winners.push(players[i].player);
+                    }
+                }
             }
         }
     }
-
     return winners;
 }
 
 function determineHighCardDraw(players) {
-    const indexes = [];
     const winners = [];
-    let max = players[0].playerPower;
-    for (let i = 1; i < players.length; i++) {
-        if (max < players[i].playerPower) {
-            max = players[i].playerPower;
-        }
-    }
 
+    let playersCards = [];
     for (let i = 0; i < players.length; i++) {
-        if (players[i].playerPower == max) {
-            indexes.push[i];
-            winners.push(players[i].player);
+        playersCards.push(players[i].playerCards);
+        playersCards[i].reverse();
+    }
+    // first card compare
+    const getArrayColumn = (arr, n) => arr.map((x) => x[n].power);
+    let firstCards = getArrayColumn(playersCards, 0);
+    console.log(firstCards);
+    let maxFirstCards = 0;
+    for (let i = 0; i < firstCards.length; i++) {
+        if (firstCards[i] > maxFirstCards) {
+            maxFirstCards = firstCards[i];
         }
     }
+    console.log(firstCards);
+    let indexes = [],
+        i = -1;
+    while ((i = firstCards.indexOf(maxFirstCards, i + 1)) != -1) {
+        console.log(i);
+        indexes.push(i);
+    }
+    if (indexes.length == 1) {
+        winners.push(players[indexes[0]].player);
+    } else {
+        let secondCards = getArrayColumn(playersCards, 1);
+        let maxSecondCards = 0;
+        for (let i = 0; i < secondCards.length; i++) {
+            if (secondCards[i] == maxSecondCards) {
+                maxSecondCards = secondCards[i];
+            }
+        }
+        let indexes = [],
+            i = -1;
+        while ((i = secondCards.indexOf(maxSecondCards, i + 1)) != -1) {
+            indexes.push(i);
+        }
+        if (indexes.length == 1) {
+            winners.push(players[indexes[0]].player);
+        } else {
+            let thirdCards = getArrayColumn(playersCards, 2);
+            let maxThirdCards = 0;
+            for (let i = 0; i < thirdCards.length; i++) {
+                if (thirdCards[i] == maxThirdCards) {
+                    maxThirdCards = thirdCards[i];
+                }
+            }
+            let indexes = [],
+                i = -1;
+            while ((i = thirdCards.indexOf(maxThirdCards, i + 1)) != -1) {
+                indexes.push(i);
+            }
+            if (indexes.length == 1) {
+                winners.push(players[indexes[0]].player);
+            } else {
+                let fourthCards = getArrayColumn(playersCards, 2);
+                let maxFourthCards = 0;
+                for (let i = 0; i < fourthCards.length; i++) {
+                    if (fourthCards[i] == maxFourthCards) {
+                        maxFourthCards = fourthCards[i];
+                    }
+                }
+                let indexes = [],
+                    i = -1;
+                while ((i = fourthCards.indexOf(maxFourthCards, i + 1)) != -1) {
+                    indexes.push(i);
+                }
+                if (indexes.length == 1) {
+                    winners.push(players[indexes[0]].player);
+                } else {
+                    let fifthCards = getArrayColumn(playersCards, 2);
+                    let maxFifthCards = 0;
+                    for (let i = 0; i < fifthCards.length; i++) {
+                        if (fifthCards[i] == maxFifthCards) {
+                            maxFifthCards = fifthCards[i];
+                        }
+                    }
+                    let indexes = [],
+                        i = -1;
+                    while ((i = fifthCards.indexOf(maxFifthCards, i + 1)) != -1) {
+                        indexes.push(i);
+                    }
+                    if (indexes.length == 1) {
+                        winners.push(players[indexes[0]].player);
+                    } else {
+                        for (let i = 0; i < players.length; i++) {
+                            winners.push(players[i].player);
+                        }
+                    }
+                }
+            }
+        }
 
+    }
     return winners;
-}
-
-function getHighestPlayersRank(players) {
-    const playersRanks = [];
-    for (let i = 0; i < players.length; i++) {
-        playersRanks[i] = hands[players[i].result];
-    }
-    const max = Math.max(...playersRanks);
-    const index = playersRanks.indexOf(max);
-    return players[index].player;
-}
-
-function createCards(playerCards, tableCards) {
-    const tableCardsSplit = tableCards.split(',');
-    const tempTableCards = []
-    const tempPlayerCards = [];
-    let tempPlayerCardsSplitted;
-    let tempPlayerTableCards = [];
-    if (playerCards) {
-        tempPlayerCardsSplitted = playerCards.split(',');
-    }
-
-
-    for (let i = 0; i < tableCardsSplit.length; i++) {
-        tempTableCards.push(new Card(tableCardsSplit[i].toUpperCase().charAt(0), tableCardsSplit[i].toUpperCase().charAt(1)));
-    }
-    if (playerCards) {
-        tempPlayerCards.push(new Card(tempPlayerCardsSplitted[0].toUpperCase().charAt(0), tempPlayerCardsSplitted[0].toUpperCase().charAt(1)));
-        tempPlayerCards.push(new Card(tempPlayerCardsSplitted[1].toUpperCase().charAt(0), tempPlayerCardsSplitted[1].toUpperCase().charAt(1)));
-
-        tempPlayerTableCards = tempPlayerCards.concat(tempTableCards);
-
-        tempPlayerTableCards.sort((a, b) => {
-            if (a.power > b.power) return 1;
-            if (a.power < b.power) return -1;
-            return 0;
-        });
-    }
-    return { playerCards: tempPlayerTableCards, tableCards: tempTableCards };
 }
 
 function backCardsToString(tableCards) {
