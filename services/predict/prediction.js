@@ -1,4 +1,6 @@
 const types = require('../../misc/types');
+const cards = require('../../misc/cards');
+const createCards = require('../../misc/createCards.js');
 
 const TooManyPlayersException = require('../exceptions/common/TooManyPlayersException');
 const CantDefineType = require('../exceptions/predict/CantDefineType');
@@ -32,31 +34,31 @@ function predictPreflop(req, res) {
     playerSuit.push(playerCards[0].split("")[1]);
     playerSuit.push(playerCards[1].split("")[1]);
     if (req.query.players === '2') {
-        playerProbability = require('../../misc/pokerOdds/pokerOddsTwoPlayers');
+        playerProbability = require('../../misc/pokerOdds/preflop/pokerOddsTwoPlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else if (req.query.players === '3') {
-        playerProbability = require('../../misc/pokerOdds/pokerOddsThreePlayers');
+        playerProbability = require('../../misc/pokerOdds/preflop/pokerOddsThreePlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else if (req.query.players === '4') {
-        playerProbability = require('../../misc/pokerOdds/pokerOddsFourPlayers');
+        playerProbability = require('../../misc/pokerOdds/preflop/pokerOddsFourPlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else if (req.query.players === '5') {
-        playerProbability = require('../../misc/pokerOdds/pokerOddsFivePlayers');
+        playerProbability = require('../../misc/pokerOdds/preflop/pokerOddsFivePlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else if (req.query.players === '6') {
-        playerProbability = require('../../misc/pokerOdds/pokerOddsSixPlayers');
+        playerProbability = require('../../misc/pokerOdds/preflop/pokerOddsSixPlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else if (req.query.players === '7') {
-        playerProbability = require('../../misc/pokerOdds/pokerOddsSevenPlayers');
+        playerProbability = require('../../misc/pokerOdds/preflop/pokerOddsSevenPlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else if (req.query.players === '8') {
-        playerProbability = require('../../misc/pokerOdds/pokerOddsEightPlayers');
+        playerProbability = require('../../misc/pokerOdds/preflop/pokerOddsEightPlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else if (req.query.players === '9') {
-        playerProbability = require('../../misc/pokerOdds/pokerOddsNinePlayers');
+        playerProbability = require('../../misc/pokerOdds/preflop/pokerOddsNinePlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else if (req.query.players === '10') {
-        playerProbability = require('../../misc/pokerOdds/pokerOddsTenPlayers');
+        playerProbability = require('../../misc/pokerOdds/preflop/pokerOddsTenPlayers');
         winningProbability = getPosibility(playerProbability, playerRank, playerSuit);
     } else {
         throw new TooManyPlayersException();
@@ -77,6 +79,11 @@ function predictAfterflop(req, res) {
     playerSuit.push(playerCards[0].split("")[1]);
     playerSuit.push(playerCards[1].split("")[1]);
 
+    const playerCards = req.query.pl;
+    const tableCards = req.query.t;
+    checkForRoyalFlush(playerCards, tableCards);
+
+
 }
 
 function predictTurn(req, res) {
@@ -96,5 +103,42 @@ function getPosibility(playerProb, playerRank, playerSuit) {
 }
 
 function calcAfterFlopProbability(playerCards, tableCards) {
+
+
+}
+
+function checkForRoyalFlush(playerCards, tableCards) {
+    const cards = createCards(playerCards, tableCards)['playerCardsTable'];
+}
+
+function checkForStraightFlush(playerCards, tableCards) {
+
+}
+
+function checkForFourOfAKind(playerCards, tableCards) {
+
+}
+
+function checkForFullHouse(playerCards, tableCards) {
+
+}
+
+function checkForFlush(playerCards, tableCards) {
+
+}
+
+function checkForStraight(playerCards, tableCards) {
+
+}
+
+function checkForThreeOfAKind(playerCards, tableCards) {
+
+}
+
+function checkForPair(playerCards, tableCards) {
+
+}
+
+function checkForOnePair(playerCards, tableCards) {
 
 }
