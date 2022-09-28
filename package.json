@@ -53,5 +53,8 @@
     },
     "jest": {
         "testEnvironment": "node"
+    },
+    "devDependencies": {
+        "cors": "^2.8.5"
     }
 }

@@ -3,6 +3,7 @@ import express, { json, urlencoded } from 'express';
 import { join } from 'path';
 import cookieParser from 'cookie-parser';
 import logger from 'morgan';
+import cors from 'cors';
 
 import indexRouter from './routes/index';
 import winnerRouter from './routes/winner';
@@ -14,14 +15,15 @@ var app = express();
 app.set('views', join(__dirname, 'views'));
 app.set('view engine', 'jade');
 
+app.use(cors());
 app.use(logger('dev'));
 app.use(json());
 app.use(urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(join(__dirname, '../public')));
-app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', '*');
-});
+// app.use((req, res, next) => {
+//     res.header('Access-Control-Allow-Origin', '*');
+// });
 
 app.use('/', indexRouter);
 app.use('/winner', winnerRouter);
