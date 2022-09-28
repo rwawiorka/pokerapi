@@ -19,6 +19,9 @@ app.use(json());
 app.use(urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(join(__dirname, '../public')));
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+});
 
 app.use('/', indexRouter);
 app.use('/winner', winnerRouter);
