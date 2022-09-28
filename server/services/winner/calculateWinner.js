@@ -75,20 +75,36 @@ export default function calculateWinner(req, res) {
         winners = playersToRoyalFlush[0].player;
     } else if (playersToStraightFlush.length > 1) {
         winners = determineStraightFlushDraw(playersToStraightFlush);
+    } else if (playersToStraightFlush.length > 0) {
+        winners = playersToStraightFlush[0].player;
     } else if (playersToFourOfAKind.length > 1) {
         winners = determineFourOfAKindDraw(playersToFourOfAKind);
+    } else if (playersToFourOfAKind.length > 0) {
+        winners = playersToFourOfAKind[0].player;
     } else if (playersToFullHouse.length > 1) {
         winners = determineFullHouseDraw(playersToFullHouse);
+    } else if (playersToFullHouse.length > 0) {
+        winners = playersToFullHouse[0].player;
     } else if (playersToFlush.length > 1) {
         winners = determineFlushDraw(playersToFlush);
+    } else if (playersToFlush.length > 0) {
+        winners = playersToFlush[0].player;
     } else if (playersToStraight.length > 1) {
         winners = determineStraightDraw(playersToStraight);
+    } else if (playersToStraight > 0) {
+        winners = playersToStraight[0].player;
     } else if (playersToThreeOfAKind.length > 1) {
         winners = determineThreeOfAKindDraw(playersToThreeOfAKind);
+    } else if (playersToThreeOfAKind.length > 0) {
+        winners = playersToThreeOfAKind[0].player;
     } else if (playersToTwoPair.length > 1) {
         winners = determineTwoPairDraw(playersToTwoPair);
+    } else if (playersToTwoPair.length > 0) {
+        winners = playersToTwoPair[0].player;
     } else if (playersToPair.length > 1) {
         winners = determineOnePairDraw(playersToPair);
+    } else if (playersToPair.length > 0) {
+        winners = playersToPair[0].player;
     } else {
         if ((winners = getHighestPlayersRank(players)) == false) {
             winners = determineHighCardDraw(players);
