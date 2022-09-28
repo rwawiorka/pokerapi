@@ -91,7 +91,7 @@ export default function calculateWinner(req, res) {
         winners = playersToFlush[0].player;
     } else if (playersToStraight.length > 1) {
         winners = determineStraightDraw(playersToStraight);
-    } else if (playersToStraight > 0) {
+    } else if (playersToStraight.length > 0) {
         winners = playersToStraight[0].player;
     } else if (playersToThreeOfAKind.length > 1) {
         winners = determineThreeOfAKindDraw(playersToThreeOfAKind);
@@ -110,6 +110,5 @@ export default function calculateWinner(req, res) {
             winners = determineHighCardDraw(players);
         }
     }
-
     res.status(200).send(JSON.stringify({ winners: winners, players: playersObject }));
 }
